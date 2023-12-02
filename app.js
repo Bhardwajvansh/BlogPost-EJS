@@ -4,6 +4,15 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const _ = require("lodash");
+const mongoose = require("mongoose")
+mongoose.connect("mongodb://localhost:27017/blogDB")
+
+const blogSC = new mongoose.Schema({
+  name:String,
+  content:String
+})
+
+const Blog = mongoose.model("Blog",blogSC)
 
 const homeStartingContent = "Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.";
 const aboutContent = "Hac habitasse platea dictumst vestibulum rhoncus est pellentesque. Dictumst vestibulum rhoncus est pellentesque elit ullamcorper. Non diam phasellus vestibulum lorem sed. Platea dictumst quisque sagittis purus sit. Egestas sed sed risus pretium quam vulputate dignissim suspendisse. Mauris in aliquam sem fringilla. Semper risus in hendrerit gravida rutrum quisque non tellus orci. Amet massa vitae tortor condimentum lacinia quis vel eros. Enim ut tellus elementum sagittis vitae. Mauris ultrices eros in cursus turpis massa tincidunt dui.";
@@ -16,10 +25,11 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-let content = []
 
 app.get("/", (req, res) => {
-  res.render("home", { homeStartingContent: homeStartingContent, content: content })
+  Blog.find().then((data)=>{
+    res.render("home", { homeStartingContent: homeStartingContent, content: data })
+  })  
 })
 
 app.get("/about", (req, res) => {
@@ -36,20 +46,22 @@ app.get("/compose", (req, res) => {
 
 app.get("/posts/:topic", (req, res) => {
   let check = _.lowerCase(req.params.topic);
-  content.forEach(ele => {
-    if (_.lowerCase(ele.name) == check) {
-      res.render("post", { title: ele.name, content: ele.content })
-    }
+  Blog.find({name:check}).then((data)=>{
+    res.render("post", { title: data[0].name, content: data[0].content })
   })
 })
 
 app.post("/", (req, res) => {
-  let newc = {
-    name: req.body.blogname,
+  let newc = Blog({
+    name: _.lowerCase(req.body.blogname),
     content: req.body.blogcontent
+  })
+  if (newc.name != "" && newc.content != "") {
+    newc.save();
+    Blog.find().then((data)=>{
+      res.render("home", { homeStartingContent: homeStartingContent, content: data })
+    })
   }
-  if (newc.name != "" && newc.content != "") content.push(newc);
-  res.redirect("/");
 })
 
 app.listen(process.env.PORT | 3000, function () {
